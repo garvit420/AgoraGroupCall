@@ -1,6 +1,6 @@
-const APP_ID = "YOUR APP ID"
-const TOKEN = "YOUR TEMP TOKEN"
-const CHANNEL = "YOUR CHANNEL NAME"
+const APP_ID = "d71fc74e8f6f4f59a3887902bcaeb1e7"
+const TOKEN = "007eJxTYPjzbnbBxsTipyKf90habwyxPXdX/qlHb+fvbymCKgeN/rMqMKSYG6Ylm5ukWqSZpZmkmVomGltYmFsaGCUlJ6YmGaaaM7N/T20IZGRY/NmZhZEBAkF8FobcxMw8BgYA9RIhUg=="
+const CHANNEL = "main"
 
 const client = AgoraRTC.createClient({mode:'rtc', codec:'vp8'})
 

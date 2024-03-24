@@ -1,77 +1,80 @@
 const APP_ID = "d71fc74e8f6f4f59a3887902bcaeb1e7"
-const TOKEN = "007eJxTYPjzbnbBxsTipyKf90habwyxPXdX/qlHb+fvbymCKgeN/rMqMKSYG6Ylm5ukWqSZpZmkmVomGltYmFsaGCUlJ6YmGaaaM7N/T20IZGRY/NmZhZEBAkF8FobcxMw8BgYA9RIhUg=="
+const TOKEN = "007eJxTYEjZ7y06TXnJz0yr/d4NH1tNe22S3cM7+dJaxLhzrmmlxCowpJgbpiWbm6RapJmlmaSZWiYaW1iYWxoYJSUnpiYZppqXb/qf2hDIyMAuGcDMyACBID4LQ25iZh4DAwCqdh0T"
 const CHANNEL = "main"
 
-const client = AgoraRTC.createClient({mode:'rtc', codec:'vp8'})
+const client = AgoraRTC.createClient({mode:'live', codec:'vp8'})
 
 let localTracks = []
 let remoteUsers = {}
 
+let isHost = false;
+
 let joinAndDisplayLocalStream = async () => {
-
-    client.on('user-published', handleUserJoined)
+    client.on('user-published', handleUserJoined);
+    client.on('user-left', handleUserLeft);
+  
+        let UID = await client.join(APP_ID, CHANNEL, TOKEN, null);
     
-    client.on('user-left', handleUserLeft)
+        if (isHost) localTracks = await AgoraRTC.createMicrophoneAndCameraTracks();
     
-    let UID = await client.join(APP_ID, CHANNEL, TOKEN, null)
-
-    localTracks = await AgoraRTC.createMicrophoneAndCameraTracks() 
-
-    let player = `<div class="video-container" id="user-container-${UID}">
+        let player = `<div class="video-container" id="user-container-${UID}">
                         <div class="video-player" id="user-${UID}"></div>
-                  </div>`
-    document.getElementById('video-streams').insertAdjacentHTML('beforeend', player)
-
-    localTracks[1].play(`user-${UID}`)
+                        </div>`;
+        document.getElementById('video-streams').insertAdjacentHTML('beforeend', player);
     
-    await client.publish([localTracks[0], localTracks[1]])
-}
+        if (isHost) localTracks[1].play(`user-${UID}`);
+    
+        if (isHost) await client.publish([localTracks[0], localTracks[1]]);
 
-let joinStream = async () => {
-    await joinAndDisplayLocalStream()
+};
+
+let joinStream = async (isHostRole) => {
+    isHost = isHostRole; 
+    await client.setClientRole(isHost ? "host" : "audience");
+    await joinAndDisplayLocalStream();
     document.getElementById('join-btn').style.display = 'none'
     document.getElementById('stream-controls').style.display = 'flex'
-}
+};
 
 let handleUserJoined = async (user, mediaType) => {
-    remoteUsers[user.uid] = user 
-    await client.subscribe(user, mediaType)
+    remoteUsers[user.uid] = user;
+    
+    await client.subscribe(user, mediaType); // Ensure subscription to both audio and video streams.
 
     if (mediaType === 'video'){
-        let player = document.getElementById(`user-container-${user.uid}`)
-        if (player != null){
-            player.remove()
+        let player = document.getElementById(`user-container-${user.uid}`);
+        if (player == null) { // Make sure a player container is created if it doesn't exist.
+            player = `<div class="video-container" id="user-container-${user.uid}">
+                            <div class="video-player" id="user-${user.uid}"></div> 
+                      </div>`;
+            document.getElementById('video-streams').insertAdjacentHTML('beforeend', player);
         }
 
-        player = `<div class="video-container" id="user-container-${user.uid}">
-                        <div class="video-player" id="user-${user.uid}"></div> 
-                 </div>`
-        document.getElementById('video-streams').insertAdjacentHTML('beforeend', player)
-
-        user.videoTrack.play(`user-${user.uid}`)
+        user.videoTrack.play(`user-${user.uid}`);
     }
 
     if (mediaType === 'audio'){
-        user.audioTrack.play()
+        user.audioTrack.play();
     }
-}
+};
+
 
 let handleUserLeft = async (user) => {
-    delete remoteUsers[user.uid]
-    document.getElementById(`user-container-${user.uid}`).remove()
-}
+    delete remoteUsers[user.uid];
+    document.getElementById(`user-container-${user.uid}`).remove();
+};
 
 let leaveAndRemoveLocalStream = async () => {
-    for(let i = 0; localTracks.length > i; i++){
-        localTracks[i].stop()
-        localTracks[i].close()
+    for (let i = 0; localTracks.length > i; i++) {
+        localTracks[i].stop();
+        localTracks[i].close();
     }
 
-    await client.leave()
-    document.getElementById('join-btn').style.display = 'block'
-    document.getElementById('stream-controls').style.display = 'none'
-    document.getElementById('video-streams').innerHTML = ''
-}
+    await client.leave();
+    document.getElementById('join-btn').style.display = 'block';
+    document.getElementById('stream-controls').style.display = 'none';
+    document.getElementById('video-streams').innerHTML = '';
+};
 
 let toggleMic = async (e) => {
     if (localTracks[0].muted){
@@ -97,7 +100,8 @@ let toggleCamera = async (e) => {
     }
 }
 
-document.getElementById('join-btn').addEventListener('click', joinStream)
+document.getElementById('host-btn').addEventListener('click', () => joinStream(true));
+document.getElementById('audience-btn').addEventListener('click', () => joinStream(false));
 document.getElementById('leave-btn').addEventListener('click', leaveAndRemoveLocalStream)
 document.getElementById('mic-btn').addEventListener('click', toggleMic)
 document.getElementById('camera-btn').addEventListener('click', toggleCamera)
